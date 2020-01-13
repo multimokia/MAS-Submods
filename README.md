@@ -23,11 +23,21 @@ Registers a function to the function_plugins dict
 
 **NOTE:** Function must be callable
 
+**NOTE:** This can also be done via the function decorator:
+```python
+@store.submod_utils.functionplugin(key, args=[], auto_error_handling=True, priority=DEF_PRIORITY)
+```
+
 ##### IN:
 - key - key to add the function to
 - _function - function to add
 - args - list of args (must be in order) to pass to the function
   - (Default: `[]`)
+- auto_error_handling - Whether or not the function plugin caller should handle errors automatically
+  - NOTE: This should only be set to False for functions which `renpy.call` or `renpy.jump`
+  - (Default: `True`)
+- priority - the priority level to run this function (the lower the number, the earlier it runs)
+  - (Defualt: `0`)
 
 ##### OUT:
 - `True` if the function was registered successfully
@@ -74,6 +84,15 @@ Unregisters a function from the function_plugins dict
 
 ### `submod_utils.current_label`:
 - The current label we're on
+
+### `submod_utils.DEF_PRIORITY`:
+- Default priority level for function plugins (0)
+
+### `submod_utils.JUMP_CALL_PRIORITY`:
+- Priority for functions which will call or jump to labels (999)
+
+### `submod_utils.PRIORITY_SORT_KEY`:
+- Lambda expression to sort function plugins by priority level
 
 ## Additional Note:
 - Errors which happen via plugged in functions will *not* crash MAS, they will be logged into the `mas_log.txt` file.

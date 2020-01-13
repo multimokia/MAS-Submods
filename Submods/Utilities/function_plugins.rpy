@@ -1,5 +1,5 @@
 #Made by multimokia
-#Version 1.0.2
+#Version 1.0.3
 init -980 python in submod_utils:
     import inspect
     import store
