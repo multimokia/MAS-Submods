@@ -1,5 +1,5 @@
 #Made by multimokia
-#Version 1.0.0
+#Version 1.0.2
 init -980 python in submod_utils:
     import inspect
     import store
@@ -12,7 +12,7 @@ init -980 python in submod_utils:
     function_plugins = dict()
 
     #START: Decorator Function
-    def functionplugin(_label, _args=[]):
+    def functionplugin(_label, _args=[], self_errorhandle=False):
         """
         Decorator function to register a plugin
         """
@@ -20,7 +20,8 @@ init -980 python in submod_utils:
             registerFunction(
                 _label,
                 _function,
-                _args
+                _args,
+                self_errorhandle
             )
             return _function
         return wrap
@@ -44,13 +45,18 @@ init -980 python in submod_utils:
         if not func_dict:
             return
 
-        for _action, args in func_dict.iteritems():
-            try:
-                store.run(_action, args)
-            except Exception as ex:
-                store.mas_utils.writelog("[ERROR]: function {0} failed because {1}\n".format(_action.__name__, ex))
+        for _action, data_tuple in func_dict.iteritems():
+            args, self_errorhandle = data_tuple
+            if not self_errorhandle:
+                try:
+                    store.run(_action, args)
+                except Exception as ex:
+                    store.mas_utils.writelog("[ERROR]: function {0} failed because {1}\n".format(_action.__name__, ex))
 
-    def registerFunction(key, _function, args=[]):
+            else:
+                store.run(_action, args)
+
+    def registerFunction(key, _function, args=[], self_errorhandle=False):
         """
         Registers a function to the function_plugins dict
         NOTE: Does NOT allow overwriting of existing functions in the dict
@@ -60,6 +66,7 @@ init -980 python in submod_utils:
             key - key to add the function to
             _function - function to add
             args - list of args (must be in order) to pass to the function (Default: [])
+            self_errorhandle - whether or not this function handles errors itself (Set this true for functions which call or jump)
 
         OUT:
             boolean:
@@ -86,7 +93,7 @@ init -980 python in submod_utils:
         elif _function in function_plugins[key]:
             return False
 
-        function_plugins[key][_function] = args
+        function_plugins[key][_function] = (args, self_errorhandle)
         return True
 
     def getArgs(key, _function):
@@ -108,7 +115,7 @@ init -980 python in submod_utils:
         if not func_dict:
             return
 
-        return func_dict.get(_function)
+        return func_dict.get(_function)[0]
 
     def setArgs(key, _function, args=[]):
         """
@@ -142,7 +149,8 @@ init -980 python in submod_utils:
             return False
 
         #Otherwise we can set
-        func_dict[_function] = args
+        old_values = func_dict[_function]
+        func_dict[_function] = (args, old_values[1])
         return True
 
     def unregisterFunction(key, _function):
