@@ -9,19 +9,31 @@ init -980 python in submod_utils:
     #Last label
     last_label = None
 
+    #Dict of all function plugins
     function_plugins = dict()
 
+    #Default priority
+    DEF_PRIORITY = 0
+
+    #Priority for jumps and calls
+    JUMP_CALL_PRIORITY = 999
+
+    PRIORITY_SORT_KEY = lambda x: x[1][2]
+
     #START: Decorator Function
-    def functionplugin(_label, _args=[], self_errorhandle=False):
+    def functionplugin(_label, _args=[], auto_error_handling=True, priority=0):
         """
         Decorator function to register a plugin
+
+        Shortcut to registerFunction. See that doc for details
         """
         def wrap(_function):
             registerFunction(
                 _label,
                 _function,
                 _args,
-                self_errorhandle
+                auto_error_handling,
+                priority
             )
             return _function
         return wrap
@@ -45,18 +57,19 @@ init -980 python in submod_utils:
         if not func_dict:
             return
 
-        for _action, data_tuple in func_dict.iteritems():
-            args, self_errorhandle = data_tuple
-            if not self_errorhandle:
+        #Firstly, let's get our sorted list
+        sorted_plugins = __prioritySort(key)
+        for _action, data_tuple in sorted_plugins:
+            if data_tuple[1]:
                 try:
-                    store.run(_action, args)
+                    store.run(_action, getArgs(key, _action))
                 except Exception as ex:
                     store.mas_utils.writelog("[ERROR]: function {0} failed because {1}\n".format(_action.__name__, ex))
 
             else:
-                store.run(_action, args)
+                store.run(_action, getArgs(key, _action))
 
-    def registerFunction(key, _function, args=[], self_errorhandle=False):
+    def registerFunction(key, _function, args=[], auto_error_handling=True, priority=DEF_PRIORITY):
         """
         Registers a function to the function_plugins dict
         NOTE: Does NOT allow overwriting of existing functions in the dict
@@ -66,7 +79,8 @@ init -980 python in submod_utils:
             key - key to add the function to
             _function - function to add
             args - list of args (must be in order) to pass to the function (Default: [])
-            self_errorhandle - whether or not this function handles errors itself (Set this true for functions which call or jump)
+            auto_error_handling - whether or not this function handles errors itself (Set this true for functions which call or jump)
+            priority - Order priority to run functions (Like init levels, the lower the number, the earlier it runs)
 
         OUT:
             boolean:
@@ -93,7 +107,7 @@ init -980 python in submod_utils:
         elif _function in function_plugins[key]:
             return False
 
-        function_plugins[key][_function] = (args, self_errorhandle)
+        function_plugins[key][_function] = (args, auto_error_handling, priority)
         return True
 
     def getArgs(key, _function):
@@ -150,7 +164,7 @@ init -980 python in submod_utils:
 
         #Otherwise we can set
         old_values = func_dict[_function]
-        func_dict[_function] = (args, old_values[1])
+        func_dict[_function] = (args, old_values[1], old_values[2])
         return True
 
     def unregisterFunction(key, _function):
@@ -181,6 +195,28 @@ init -980 python in submod_utils:
         #Otherwise we can pop
         function_plugins[key].pop(_function)
         return True
+
+    def __prioritySort(_label):
+        """
+        Sorts function plugins based on the priority order system
+
+        IN:
+            _label - label to sort functions by priority for
+
+        OUT:
+            sorted list of (_function, data_tuple) tuples
+
+        NOTE: This assumes that the label exists in the function_plugins dict
+        """
+        global function_plugins
+
+        #First, we need to convert the functions into a list of tuples
+        func_list = [
+            (_function, data_tuple)
+            for _function, data_tuple in function_plugins[_label].iteritems()
+        ]
+
+        return sorted(func_list, key=PRIORITY_SORT_KEY)
 
 #Global run area
 init -990 python:
