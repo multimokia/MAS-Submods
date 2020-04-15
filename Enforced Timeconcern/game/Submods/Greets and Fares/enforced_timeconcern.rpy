@@ -49,8 +49,6 @@ init 1 python in etc_warntimes:
     import store
     import datetime
 
-    _persistent = store.persistent
-
     #Stuff for screen preprocessing
     NO_CHANGE = 0
     START_CHANGE = 1
@@ -58,39 +56,39 @@ init 1 python in etc_warntimes:
     change_state = NO_CHANGE
     modifier = 5 # modifier for chunking the time
 
-    start_prev = _persistent._etc_weekday_map[0]["start_time"]
-    end_prev = _persistent._etc_weekday_map[0]["end_time"]
+    start_prev = store.persistent._etc_weekday_map[0]["start_time"]
+    end_prev = store.persistent._etc_weekday_map[0]["end_time"]
 
     weekday_edit = 0
 
     time_dict = {
         0: {
-            "start_time": int(_persistent._etc_weekday_map[0]["start_time"]/5),
-            "end_time": int(_persistent._etc_weekday_map[0]["end_time"]/5)
+            "start_time": int(store.persistent._etc_weekday_map[0]["start_time"]/5),
+            "end_time": int(store.persistent._etc_weekday_map[0]["end_time"]/5)
         },
         1: {
-            "start_time": int(_persistent._etc_weekday_map[1]["start_time"]/5),
-            "end_time": int(_persistent._etc_weekday_map[1]["end_time"]/5)
+            "start_time": int(store.persistent._etc_weekday_map[1]["start_time"]/5),
+            "end_time": int(store.persistent._etc_weekday_map[1]["end_time"]/5)
         },
         2: {
-            "start_time": int(_persistent._etc_weekday_map[2]["start_time"]/5),
-            "end_time": int(_persistent._etc_weekday_map[2]["end_time"]/5)
+            "start_time": int(store.persistent._etc_weekday_map[2]["start_time"]/5),
+            "end_time": int(store.persistent._etc_weekday_map[2]["end_time"]/5)
         },
         3: {
-            "start_time": int(_persistent._etc_weekday_map[3]["start_time"]/5),
-            "end_time": int(_persistent._etc_weekday_map[3]["end_time"]/5)
+            "start_time": int(store.persistent._etc_weekday_map[3]["start_time"]/5),
+            "end_time": int(store.persistent._etc_weekday_map[3]["end_time"]/5)
         },
         4: {
-            "start_time": int(_persistent._etc_weekday_map[4]["start_time"]/5),
-            "end_time": int(_persistent._etc_weekday_map[4]["end_time"]/5)
+            "start_time": int(store.persistent._etc_weekday_map[4]["start_time"]/5),
+            "end_time": int(store.persistent._etc_weekday_map[4]["end_time"]/5)
         },
         5: {
-            "start_time": int(_persistent._etc_weekday_map[5]["start_time"]/5),
-            "end_time": int(_persistent._etc_weekday_map[5]["end_time"]/5)
+            "start_time": int(store.persistent._etc_weekday_map[5]["start_time"]/5),
+            "end_time": int(store.persistent._etc_weekday_map[5]["end_time"]/5)
         },
         6: {
-            "start_time": int(_persistent._etc_weekday_map[6]["start_time"]/5),
-            "end_time": int(_persistent._etc_weekday_map[6]["end_time"]/5)
+            "start_time": int(store.persistent._etc_weekday_map[6]["start_time"]/5),
+            "end_time": int(store.persistent._etc_weekday_map[6]["end_time"]/5)
         }
     }
 
@@ -104,17 +102,20 @@ init 1 python in etc_warntimes:
         global NO_CHANGE
         global change_state
 
-        start_end_times = time_dict[weekday_edit]
+        weekday_offset = (weekday_edit + 1) % 7
 
-        if start_end_times["end_time"] > start_end_times["start_time"]:
+        start_times = time_dict[weekday_edit]
+        end_times = time_dict[weekday_offset]
+
+        if end_times["end_time"] > start_times["start_time"]:
             # ensure sunset remains >= than sunrise
-            start_end_times["start_time"] = start_end_times["end_time"]
+            start_times["start_time"] = end_times["end_time"]
 
-        if end_prev == start_end_times["end_time"]:
+        if end_prev == end_times["end_time"]:
             # if no change since previous, then switch state
             change_state = NO_CHANGE
 
-        end_prev = start_end_times["end_time"]
+        end_prev = end_times["end_time"]
 
     def endChangeAdjust():
         """
@@ -126,17 +127,20 @@ init 1 python in etc_warntimes:
         global NO_CHANGE
         global change_state
 
-        start_end_times = time_dict[weekday_edit]
+        weekday_offset = (weekday_edit + 1) % 7
 
-        if start_end_times["start_time"] < start_end_times["end_time"]:
-            # ensure sunrise remains <= than sunset
-            start_end_times["end_time"] = start_end_times["start_time"]
+        start_times = time_dict[weekday_edit]
+        end_times = time_dict[weekday_offset]
 
-        if start_prev == start_end_times["start_time"]:
+        if start_times["start_time"] < end_times["end_time"]:
+            # ensure end_time remains <= than start_time
+            end_times["end_time"] = start_times["start_time"]
+
+        if start_prev == start_times["start_time"]:
             # if no change since previous, then switch state
             change_state = NO_CHANGE
 
-        start_prev = start_end_times["start_time"]
+        start_prev = start_times["start_time"]
 
     def setChanging():
         """
@@ -147,17 +151,20 @@ init 1 python in etc_warntimes:
         global START_CHANGE, END_CHANGE
         global time_dict, weekday_edit
 
-        start_end_times = time_dict[weekday_edit]
+        weekday_offset = (weekday_edit + 1) % 7
 
-        if start_prev != start_end_times["start_time"]:
+        start_times = time_dict[weekday_edit]
+        end_times = time_dict[weekday_offset]
+
+        if start_prev != start_times["start_time"]:
             change_state = START_CHANGE
 
-        elif end_prev != start_end_times["end_time"]:
+        elif end_prev != end_times["end_time"]:
             change_state = END_CHANGE
 
         # set previous values
-        start_prev = start_end_times["start_time"]
-        end_prev = start_end_times["end_time"]
+        start_prev = start_times["start_time"]
+        end_prev = end_times["end_time"]
 
     def setTimes():
         """
@@ -168,16 +175,18 @@ init 1 python in etc_warntimes:
                 [0] - display start_time
                 [1] - display end_time
         """
-        global _persistent
         global time_dict, weekday_edit
 
-        start_end_times = time_dict[weekday_edit]
+        offset_weekday = (weekday_edit + 1) % 7
 
-        _persistent._etc_weekday_map[weekday_edit]["start_time"] = start_end_times["start_time"] * 5
-        _persistent._etc_weekday_map[weekday_edit]["end_time"] = start_end_times["end_time"] * 5
+        start_times = time_dict[weekday_edit]
+        end_times = time_dict[offset_weekday]
 
-        st_display = store.mas_cvToDHM(_persistent._etc_weekday_map[weekday_edit]["start_time"])
-        et_display = store.mas_cvToDHM(_persistent._etc_weekday_map[weekday_edit]["end_time"])
+        store.persistent._etc_weekday_map[weekday_edit]["start_time"] = start_times["start_time"] * 5
+        store.persistent._etc_weekday_map[offset_weekday]["end_time"] = end_times["end_time"] * 5
+
+        st_display = store.mas_cvToDHM(store.persistent._etc_weekday_map[weekday_edit]["start_time"])
+        et_display = store.mas_cvToDHM(store.persistent._etc_weekday_map[offset_weekday]["end_time"])
 
         return (st_display, et_display)
 
@@ -196,6 +205,16 @@ init 1 python in etc_warntimes:
             HM[0],
             HM[1]
         )
+
+    def getDictPointer(weekday, _offset=0):
+        """
+        Returns the pointer to the persistent
+        """
+        global time_dict
+
+        weekday = (weekday + _offset) % 7
+
+        return time_dict[weekday]
 
     def getStartDT(weekday=None, _offset=0):
         """
@@ -400,7 +419,7 @@ screen enforced_timeconcern_settings():
                     label "[[ " + st_display + " ]"
 
                 bar:
-                    value DictValue(etc_warntimes.time_dict[etc_warntimes.weekday_edit], "start_time", range=mas_max_suntime, style="slider")
+                    value DictValue(etc_warntimes.getDictPointer(etc_warntimes.weekday_edit), "start_time", range=mas_max_suntime, style="slider")
                     hovered SetField(_tooltip, "value", etc_tt_start_time.format(etc_tt_day_map[etc_warntimes.weekday_edit]))
                     unhovered SetField(_tooltip, "value", _tooltip.default)
 
@@ -413,8 +432,8 @@ screen enforced_timeconcern_settings():
                     label "[[ " + et_display + " ]"
 
                 bar:
-                    value DictValue(etc_warntimes.time_dict[etc_warntimes.weekday_edit], "end_time", range=mas_max_suntime, style="slider")
-                    hovered SetField(_tooltip, "value", etc_tt_end_time.format(etc_tt_day_map[etc_warntimes.weekday_edit]))
+                    value DictValue(etc_warntimes.getDictPointer(etc_warntimes.weekday_edit, 1), "end_time", range=mas_max_suntime, style="slider")
+                    hovered SetField(_tooltip, "value", etc_tt_end_time.format(etc_tt_day_map[(etc_warntimes.weekday_edit + 1) % 7]))
                     unhovered SetField(_tooltip, "value", _tooltip.default)
 
 #START: helpers
