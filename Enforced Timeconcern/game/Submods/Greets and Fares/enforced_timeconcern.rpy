@@ -560,9 +560,7 @@ label etc_sleep_checktime:
         current_time = datetime.datetime.now().time()
 
         #Is it slep time?
-        if (
-            datetime.time(9, 30) <= current_time <= datetime.time(17, 0)
-        ):
+        if etc_warntimes.getStartDT().time() <= current_time <= etc_warntimes.getEndDT(_offset=1).time():
             #Few things:
             #Monika doesn't know you're here as she's asleep, so we disable the quit warn
             mas_enable_quit()
@@ -580,6 +578,8 @@ label etc_sleep_checktime:
             #Buttons should be hidden
             HKBHideButtons()
 
+            woke_moni = False
+
             renpy.jump("etc_sleep_cleanup")
 
 
@@ -590,6 +590,14 @@ label etc_sleep_main:
 
     #Wait a sec
     $ renpy.pause(1.0, hard=True)
+    menu:
+        "{i}Wake Monika up.":
+            $ woke_moni = True
+            jump etc_sleep_cleanup
+
+        "{i}Let her rest.":
+            pass
+
     jump etc_sleep_checktime
 
 label etc_sleep_cleanup:
@@ -607,6 +615,8 @@ label etc_sleep_cleanup:
     show monika 1eua at ls32 zorder MAS_MONIKA_Z
     call monikaroom_greeting_cleanup
 
-    m 1hub "Good evening, [player]!"
-    m 3eub "Are you ready for another wonderful day?"
+    $ day = "day" if mas_globals.time_of_day_4state in ["morning", "afternoon"] else "night"
+
+    m 1hub "Good [mas_globals.time_of_day_3state], [player]!"
+    m 3eub "Let's have another wonderful [day] together."
     jump ch30_post_exp_check
