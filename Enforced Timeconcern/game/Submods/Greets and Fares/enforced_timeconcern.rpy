@@ -437,6 +437,34 @@ screen enforced_timeconcern_settings():
                     hovered SetField(_tooltip, "value", etc_tt_end_time.format(etc_tt_day_map[(etc_warntimes.weekday_edit + 1) % 7]))
                     unhovered SetField(_tooltip, "value", _tooltip.default)
 
+            else:
+                textbutton _("Enabled"):
+                    action ToggleDict(persistent._etc_weekday_map[etc_warntimes.weekday_edit], "enabled")
+                    selected etc_warntimes.shouldEnforceToday(etc_warntimes.weekday_edit)
+
+                hbox:
+                    box_wrap True
+                    style_prefix mas_ui.sld_style_prefix
+                    label "Start time   "
+
+                    # display time
+                    label "[[ " + st_display + " ]"
+
+                bar:
+                    value DictValue(etc_warntimes.getDictPointer(etc_warntimes.weekday_edit), "start_time", range=mas_max_suntime, style="slider")
+
+                hbox:
+                    box_wrap True
+                    style_prefix mas_ui.sld_style_prefix
+                    label "End time   "
+
+                    # display time
+                    label "[[ " + et_display + " ]"
+
+                bar:
+                    value DictValue(etc_warntimes.getDictPointer(etc_warntimes.weekday_edit, 1), "end_time", range=mas_max_suntime, style="slider")
+
+
 #START: helpers
 init 10 python in etc_utils:
     import store
@@ -462,7 +490,7 @@ init 10 python in etc_utils:
         ev.conditional = (
             "not store.etc_warntimes.enforcedAlready() "
             "and store.etc_warntimes.shouldEnforceToday() "
-            "and (store.etc_warntimes.getStartDT() <= datetime.datetime.now() <= store.etc_warntimes.getEndDT(_offset=1))"
+            "and (store.etc_warntimes.getEndDT() >= datetime.datetime.now() or store.etc_warntimes.getStartDT() <= datetime.datetime.now())"
         )
         ev.action = store.EV_ACT_QUEUE
 
@@ -475,7 +503,16 @@ init 10 python in etc_utils:
         """
         Checks if we should load in asleep
         """
-        if store.persistent._etc_sleep_load:
+        current_time = datetime.datetime.today()
+
+        #Now we need to get the end time (for yesterday, which is stored in today's key) and the start time for today
+        start_time = store.etc_warntimes.getStartDT()
+        end_time = store.etc_warntimes.getEndDT()
+
+        if (
+            current_time <= end_time
+            or current_time >= start_time
+        ):
             renpy.jump("etc_sleep_checktime")
 
     #Reset the ev
@@ -489,9 +526,9 @@ init 5 python:
             persistent.event_database,
             eventlabel="etc_monika_enforced_timeconcern",
             conditional=(
-                "not store.etc_warntimes.enforcedAlready() "
-                "and store.etc_warntimes.shouldEnforceToday() "
-                "and (store.etc_warntimes.getStartDT() <= datetime.datetime.now() <= store.etc_warntimes.getEndDT(_offset=1))"
+            "not store.etc_warntimes.enforcedAlready() "
+            "and store.etc_warntimes.shouldEnforceToday() "
+            "and (store.etc_warntimes.getEndDT() >= datetime.datetime.now() or store.etc_warntimes.getStartDT() <= datetime.datetime.now())"
             ),
             action=EV_ACT_QUEUE,
             unlocked=False,
@@ -560,14 +597,16 @@ label etc_monika_enforced_timeconcern:
 
 #START: Sleep loop flow
 label etc_sleep_checktime:
-    #Get current time
-    $ current_time = datetime.datetime.now()
+    python:
+        #Get current time
+        current_time = datetime.datetime.now()
 
-    # Get current event's weekday
-    $ current_event = (persistent._etc_can_wake_up - datetime.timedelta(seconds=2100)).weekday()
+        #Now we need to get the end time (for yesterday, which is stored in today's key) and the start time for today
+        start_time = store.etc_warntimes.getStartDT()
+        end_time = store.etc_warntimes.getEndDT()
 
     #Is it slep time?
-    if etc_warntimes.getStartDT(weekday=current_event) <= current_time <= etc_warntimes.getEndDT(weekday=current_event, _offset=1):
+    if current_time <= end_time or current_time >= start_time:
         #Few things:
         #Monika doesn't know you're here as she's asleep, so we disable the quit warn
         $ mas_enable_quit()
@@ -597,13 +636,6 @@ label etc_sleep_start:
 
     $ renpy.music.play(store.songs.FP_MONIKA_LULLABY, loop=True, fadein=1.0, if_changed=True)
 
-    #TODO: Decide if Monika is going to have a sleep schedule of her own or if she's going to follow player's schedule
-    ## check if Monika should wake up on her own
-    #if datetime.datetime.now() >= etc_warntimes.getEndDT(weekday=current_event, _offset=1):
-    #    $ woke_moni = True
-    #    hide screen mas_background_timed_jump
-    #    jump etc_sleep_cleanup
-
     show screen mas_background_timed_jump(60, "etc_sleep_start")
 
     window hide
@@ -620,19 +652,9 @@ label etc_sleep_main:
 
     scene black
 
-    #$ renpy.not_infinite_loop(60)
-
-    #TODO: Decide if Monika is going to have a sleep schedule of her own or if she's going to follow player's schedule
-    ## check if Monika should wake up on her own
-    #if datetime.datetime.now() >= etc_warntimes.getEndDT(weekday=current_event, _offset=1):
-    #    $ woke_moni = True
-    #    hide screen mas_background_timed_jump
-    #    jump etc_sleep_cleanup
-
-
     show screen mas_background_timed_jump(60, "etc_sleep_main")
     menu:
-        "Wake Monika up." if (persistent._etc_can_wake_up and persistent._etc_can_wake_up < datetime.datetime.now()):
+        "Wake Monika up." if (not persistent._etc_can_wake_up or (persistent._etc_can_wake_up and persistent._etc_can_wake_up < datetime.datetime.now())):
             $ woke_moni = True
             hide screen mas_background_timed_jump
             jump etc_sleep_cleanup
