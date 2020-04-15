@@ -10,6 +10,9 @@ init -990 python in mas_submod_utils:
 #Should we load in with Monika asleep?
 default persistent._etc_sleep_load = False
 
+#The time after which we are able to wake Monika up
+default persistent._etc_can_wake_up = None
+
 #The data storage for the times
 default persistent._etc_weekday_map = {
     0: {"enabled": False, "start_time": 0, "end_time": 0}, #Monday
@@ -24,11 +27,11 @@ default persistent._etc_weekday_map = {
 #START: tooltips
 init -1 python:
     etc_tt_start_time = (
-        "Use this to let Monika know what time she she should start to remind you to go to bed on {0}."
+        "Use this to let Monika know what time she should start to remind you to go to bed on {0}."
     )
 
     etc_tt_end_time = (
-        "Use this to let Monika know what time she she should no longer remind you to go to bed on {0}."
+        "Use this to let Monika know what time she should no longer remind you to go to bed on {0}."
     )
 
     etc_tt_enable = (
@@ -468,14 +471,14 @@ init 10 python in etc_utils:
     @store.mas_submod_utils.functionplugin(
         "mas_ch30_post_retmoni_check",
         auto_error_handling=False,
-        priority=store.submod_utils.JUMP_CALL_PRIORITY
+        priority=store.mas_submod_utils.JUMP_CALL_PRIORITY
     )
     def checkSleepLoad():
         """
         Checks if we should load in asleep
         """
         if store.persistent._etc_sleep_load:
-            renpy.jump("etc_sleep_main")
+            renpy.jump("etc_sleep_checktime")
 
     #Reset the ev
     resetTC_EV()
@@ -526,6 +529,10 @@ label etc_monika_enforced_timeconcern:
 
             #Set PC to shut down
             $ mas_shutdownHost(message="I'll see you tomorrow, [player].\nI love you~", timeout=1800)
+
+            # We should be allowed to wake Monika up only after the timeout is up + 5 minutes for safety
+            $ persistent._etc_can_wake_up = datetime.datetime.now() + datetime.timedelta(minutes=2100)
+
             return "no_unlock|quit"
 
         "Can we spend a little more time together, [m_name]?":
@@ -585,26 +592,42 @@ label etc_sleep_checktime:
 
 label etc_sleep_main:
     scene black
+
     $ renpy.music.play(store.songs.FP_MONIKA_LULLABY, loop=True, fadein=1.0, if_changed=True)
     #$ renpy.not_infinite_loop(60)
 
-    #Wait a sec
+    #do a time jump to the time check thing here
     $ renpy.pause(1.0, hard=True)
+    #hide timed jump here
+
     menu:
-        "{i}Wake Monika up.":
+        "Wake Monika up." if (persistent._etc_can_wake_up and persistent._etc_can_wake_up < datetime.datetime.now()):
             $ woke_moni = True
             jump etc_sleep_cleanup
 
-        "{i}Let her rest.":
+        "Let her sleep.":
             pass
 
     jump etc_sleep_checktime
 
 label etc_sleep_cleanup:
+
+    # Set up weather here
+    if not mas_weather.force_weather and not skip_setting_weather:
+        $ set_to_weather = mas_shouldRain()
+        if set_to_weather is not None:
+            $ mas_changeWeather(set_to_weather)
+            $ skip_setting_weather = True
+
     #Also Monika's up so we disable quit
     $ mas_disable_quit()
     #Reset the ev (just to be sure it'll have the right dates on it)
     $ etc_utils.resetTC_EV()
+
+    # Reset our vars so that we won't load back to sleep flow
+    $ persistent._etc_sleep_load = False
+    $ persistent._etc_can_wake_up = None
+
     #Stop the music
     stop music fadeout 1.0
 
@@ -612,7 +635,8 @@ label etc_sleep_cleanup:
     pause 5.0
     call spaceroom(hide_monika=True, dissolve_all=True, scene_change=True)
     pause 2.0
-    show monika 1eua at ls32 zorder MAS_MONIKA_Z
+    call mas_transition_from_emptydesk
+    #show monika 1eua at ls32 zorder MAS_MONIKA_Z
     call monikaroom_greeting_cleanup
 
     $ day = "day" if mas_globals.time_of_day_4state in ["morning", "afternoon"] else "night"
