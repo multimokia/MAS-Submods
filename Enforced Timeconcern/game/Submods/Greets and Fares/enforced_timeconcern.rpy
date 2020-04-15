@@ -340,7 +340,6 @@ init 1 python in etc_warntimes:
 screen enforced_timeconcern_settings():
     #Preprocessing
     python:
-
         submods_screen = store.renpy.get_screen("submods", "screens")
 
         if submods_screen:
@@ -348,7 +347,7 @@ screen enforced_timeconcern_settings():
         else:
             _tooltip = None
 
-        #Setup our weekday stuff
+    #Setup our weekday stuff
     hbox:
         vbox:
             box_wrap False
@@ -384,7 +383,6 @@ screen enforced_timeconcern_settings():
                 selected etc_warntimes.weekday_edit == 6
 
         vbox:
-            #style_prefix mas_ui.cbx_style_prefix
             xfill True
             box_wrap False
 
@@ -531,7 +529,7 @@ label etc_monika_enforced_timeconcern:
             $ mas_shutdownHost(message="I'll see you tomorrow, [player].\nI love you~", timeout=1800)
 
             # We should be allowed to wake Monika up only after the timeout is up + 5 minutes for safety
-            $ persistent._etc_can_wake_up = datetime.datetime.now() + datetime.timedelta(minutes=2100)
+            $ persistent._etc_can_wake_up = datetime.datetime.now() + datetime.timedelta(seconds=2100)
 
             return "no_unlock|quit"
 
@@ -566,7 +564,7 @@ label etc_sleep_checktime:
     $ current_time = datetime.datetime.now()
 
     # Get current event's weekday
-    $ current_event = (persistent._etc_can_wake_up - datetime.timedelta(minutes=2100)).weekday()
+    $ current_event = (persistent._etc_can_wake_up - datetime.timedelta(seconds=2100)).weekday()
 
     #Is it slep time?
     if etc_warntimes.getStartDT(weekday=current_event) <= current_time <= etc_warntimes.getEndDT(weekday=current_event, _offset=1):
@@ -618,7 +616,6 @@ label etc_sleep_start:
     return
 
 label etc_sleep_main:
-
     hide screen mas_background_timed_jump
 
     scene black
@@ -631,6 +628,7 @@ label etc_sleep_main:
     #    $ woke_moni = True
     #    hide screen mas_background_timed_jump
     #    jump etc_sleep_cleanup
+
 
     show screen mas_background_timed_jump(60, "etc_sleep_main")
     menu:
