@@ -562,50 +562,85 @@ label etc_monika_enforced_timeconcern:
 
 #START: Sleep loop flow
 label etc_sleep_checktime:
-    python:
-        #Get current time
-        current_time = datetime.datetime.now().time()
+    #Get current time
+    $ current_time = datetime.datetime.now()
 
-        #Is it slep time?
-        if etc_warntimes.getStartDT().time() <= current_time <= etc_warntimes.getEndDT(_offset=1).time():
-            #Few things:
-            #Monika doesn't know you're here as she's asleep, so we disable the quit warn
-            mas_enable_quit()
+    # Get current event's weekday
+    $ current_event = (persistent._etc_can_wake_up - datetime.timedelta(minutes=2100)).weekday()
 
-            #Buttons should be hidden
-            HKBHideButtons()
+    #Is it slep time?
+    if etc_warntimes.getStartDT(weekday=current_event) <= current_time <= etc_warntimes.getEndDT(weekday=current_event, _offset=1):
+        #Few things:
+        #Monika doesn't know you're here as she's asleep, so we disable the quit warn
+        $ mas_enable_quit()
 
-            #Hotkeys should be disabled
-            store.mas_hotkeys.music_enabled = False
+        #Buttons should be hidden
+        $ HKBHideButtons()
 
-            #Start loop
-            renpy.jump("etc_sleep_main")
+        #Hotkeys should be disabled
+        $ store.mas_hotkeys.music_enabled = False
 
-        else:
-            #Buttons should be hidden
-            HKBHideButtons()
+        #Start loop
+        call etc_sleep_start
+        jump etc_sleep_main
 
-            woke_moni = False
+    else:
+        #Buttons should be hidden
+        $ HKBHideButtons()
 
-            renpy.jump("etc_sleep_cleanup")
+        $ woke_moni = False
 
+        jump etc_sleep_cleanup
 
-label etc_sleep_main:
+label etc_sleep_start:
+    hide screen mas_background_timed_jump
+
     scene black
 
     $ renpy.music.play(store.songs.FP_MONIKA_LULLABY, loop=True, fadein=1.0, if_changed=True)
+
+    #TODO: Decide if Monika is going to have a sleep schedule of her own or if she's going to follow player's schedule
+    ## check if Monika should wake up on her own
+    #if datetime.datetime.now() >= etc_warntimes.getEndDT(weekday=current_event, _offset=1):
+    #    $ woke_moni = True
+    #    hide screen mas_background_timed_jump
+    #    jump etc_sleep_cleanup
+
+    show screen mas_background_timed_jump(60, "etc_sleep_start")
+
+    window hide
+    $ ui.add(PauseDisplayable())
+    $ ui.interact()
+    window auto
+
+    hide screen mas_background_timed_jump
+
+    return
+
+label etc_sleep_main:
+
+    hide screen mas_background_timed_jump
+
+    scene black
+
     #$ renpy.not_infinite_loop(60)
 
-    #do a time jump to the time check thing here
-    $ renpy.pause(1.0, hard=True)
-    #hide timed jump here
+    #TODO: Decide if Monika is going to have a sleep schedule of her own or if she's going to follow player's schedule
+    ## check if Monika should wake up on her own
+    #if datetime.datetime.now() >= etc_warntimes.getEndDT(weekday=current_event, _offset=1):
+    #    $ woke_moni = True
+    #    hide screen mas_background_timed_jump
+    #    jump etc_sleep_cleanup
 
+    show screen mas_background_timed_jump(60, "etc_sleep_main")
     menu:
         "Wake Monika up." if (persistent._etc_can_wake_up and persistent._etc_can_wake_up < datetime.datetime.now()):
             $ woke_moni = True
+            hide screen mas_background_timed_jump
             jump etc_sleep_cleanup
 
         "Let her sleep.":
+            hide screen mas_background_timed_jump
             pass
 
     jump etc_sleep_checktime
@@ -617,7 +652,7 @@ label etc_sleep_cleanup:
         $ set_to_weather = mas_shouldRain()
         if set_to_weather is not None:
             $ mas_changeWeather(set_to_weather)
-            $ skip_setting_weather = True
+        $ skip_setting_weather = True
 
     #Also Monika's up so we disable quit
     $ mas_disable_quit()
