@@ -352,7 +352,7 @@ screen enforced_timeconcern_settings():
         vbox:
             box_wrap False
 
-            style_prefix mas_ui.cbx_style_prefix
+            style_prefix "check"
 
             textbutton _("Monday"):
                 action SetField(etc_warntimes, "weekday_edit", 0)
@@ -413,7 +413,7 @@ screen enforced_timeconcern_settings():
 
                 hbox:
                     box_wrap True
-                    style_prefix mas_ui.sld_style_prefix
+                    style_prefix "slider"
                     label "Start time   "
 
                     # display time
@@ -426,7 +426,7 @@ screen enforced_timeconcern_settings():
 
                 hbox:
                     box_wrap True
-                    style_prefix mas_ui.sld_style_prefix
+                    style_prefix "slider"
                     label "End time   "
 
                     # display time
@@ -444,7 +444,7 @@ screen enforced_timeconcern_settings():
 
                 hbox:
                     box_wrap True
-                    style_prefix mas_ui.sld_style_prefix
+                    style_prefix "slider"
                     label "Start time   "
 
                     # display time
@@ -455,7 +455,7 @@ screen enforced_timeconcern_settings():
 
                 hbox:
                     box_wrap True
-                    style_prefix mas_ui.sld_style_prefix
+                    style_prefix "slider"
                     label "End time   "
 
                     # display time
